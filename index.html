@@ -1,0 +1,2331 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="https://heart2026.fr/wp-content/uploads/2026/08/icone_site_bleu-300x300.png" sizes="192x192" />
+  <link rel="apple-touch-icon" href="https://heart2026.fr/wp-content/uploads/2026/08/icone_site_bleu-300x300.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <title>Paris Scavenger Hunt — Notre-Dame to Jussieu</title>
+
+  <!--
+  ============================= FIREBASE SETUP — READ ME FIRST =============================
+  This app needs a free Firebase Realtime Database so every phone can share the same
+  teams, photos and leaderboard. Takes about 10 minutes, no coding, no credit card:
+
+  1. Go to https://console.firebase.google.com and sign in with any Google account.
+  2. Click "Add project", give it any name, finish the wizard (Analytics can be off).
+  3. In the left menu: Build > Realtime Database > "Create Database".
+     - Pick a region close to your event (e.g. Europe) and continue.
+     - Choose "Start in test mode" if offered (or "locked mode", see step 4).
+  4. Click the "Rules" tab of the Realtime Database and paste exactly this, then "Publish":
+       {
+         "rules": {
+           ".read": true,
+           ".write": true
+         }
+       }
+     This makes the data open to anyone with your database URL — fine for a short,
+     low-stakes event. Delete the Firebase project once the hunt is over if you'd rather
+     not leave it open.
+  5. Click the gear icon (top left) > "Project settings" > scroll to "Your apps" >
+     click the "</>" (web) icon > register an app (any nickname, no need for Hosting).
+  6. Firebase shows you a `firebaseConfig` object. Copy its values into the block below,
+     replacing every "PASTE_..." placeholder. Save this file, then upload it to whatever
+     web host you're using (GitHub Pages, Netlify, your own server, etc.).
+  ============================================================================================
+-->
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+    :root {
+      --paper: #F1ECDD;
+      --paper-2: #E8E1CC;
+      --ink: #1E241F;
+      --ink-soft: #4B5148;
+      --bleu: #14304A;
+      --vert: #1F6E4B;
+      --alerte: #A6432B;
+      --or: #A87F2E;
+      --white: #FFFDF7;
+      --radius: 5px;
+      --serif: 'Fraunces', Georgia, serif;
+      --sans: 'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --mono: 'Space Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--paper);
+      background-image:
+        linear-gradient(var(--paper-2) 1px, transparent 1px),
+        linear-gradient(90deg, var(--paper-2) 1px, transparent 1px);
+      background-size: 22px 22px;
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      padding-bottom: 60px;
+    }
+
+    #app {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 14px;
+    }
+
+    .warning-banner {
+      background: #FFF3E0;
+      border: 2px solid var(--alerte);
+      border-radius: 4px;
+      padding: 12px 14px;
+      margin: 14px 0;
+      font-size: 13.5px;
+      color: var(--ink);
+    }
+
+    .warning-banner b {
+      color: var(--alerte);
+    }
+
+    .warning-banner code {
+      background: rgba(0, 0, 0, 0.06);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: var(--mono);
+      white-space: pre;
+    }
+
+    .live-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--vert);
+      margin-right: 6px;
+    }
+
+
+    /* ---------- Mission map ---------- */
+    .mission-map-wrap {
+      background: var(--white);
+      border: 1.5px solid var(--ink);
+      border-radius: var(--radius);
+      padding: 12px;
+      margin-bottom: 18px;
+    }
+
+    .mission-map-wrap h2 {
+      font-family: var(--serif);
+      font-size: 19px;
+      margin: 0 0 4px;
+      font-weight: 600;
+    }
+
+    .mission-map-note {
+      color: var(--ink-soft);
+      font-size: 12.5px;
+      margin-bottom: 10px;
+    }
+
+    #mission-map {
+      width: 100%;
+      height: 430px;
+      border: 1.5px solid var(--ink);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .map-attribution {
+      font-size: 10.5px;
+      color: var(--ink-soft);
+      margin-top: 5px;
+      text-align: right;
+    }
+
+    .mission-map-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .map-legend-item {
+      font-size: 11.5px;
+      background: var(--paper);
+      border: 1px dashed var(--ink-soft);
+      border-radius: 4px;
+      padding: 4px 7px;
+    }
+
+    .map-number {
+      background: var(--vert);
+      color: #fff;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 12px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, .3);
+    }
+
+    .map-popup-title {
+      font-family: var(--serif);
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+
+    .map-popup-points {
+      font-family: var(--mono);
+      color: var(--or);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .map-marker {
+      background: var(--vert);
+      color: #fff;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 12px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, .3);
+      cursor: pointer;
+    }
+
+    .maplibregl-popup-content {
+      font-family: var(--sans);
+      padding: 12px 14px;
+    }
+
+    .maplibregl-popup-close-button {
+      font-size: 18px;
+    }
+
+    .map-popup-title {
+      font-family: var(--serif);
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+
+    .map-popup-points {
+      font-family: var(--mono);
+      color: var(--or);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* ---------- Header / plaque ---------- */
+    .header-plaque {
+      margin: 16px 0 10px;
+      background: var(--bleu);
+      border: 3px solid var(--vert);
+      border-radius: 3px;
+      padding: 16px 18px 14px;
+      text-align: center;
+      box-shadow: 0 3px 0 rgba(0, 0, 0, 0.15);
+    }
+
+    .header-plaque .eyebrow {
+      font-family: var(--mono);
+      color: #CFE3D6;
+      letter-spacing: 0.18em;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    .header-plaque h1 {
+      font-family: var(--serif);
+      color: #fff;
+      font-weight: 600;
+      font-size: 24px;
+      margin: 4px 0 2px;
+      letter-spacing: 0.01em;
+    }
+
+    .header-plaque .sub {
+      color: #CFE3D6;
+      font-size: 13px;
+      font-family: var(--sans);
+    }
+
+    #chrono-wrap {
+      margin-top: 10px;
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 20px;
+      padding: 4px 12px;
+    }
+
+    #chrono-wrap.low {
+      background: rgba(166, 67, 43, 0.35);
+      border-color: var(--alerte);
+    }
+
+    /* ---------- Tabs ---------- */
+    .tabs {
+      display: flex;
+      gap: 6px;
+      margin: 14px 0;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      flex: 1 1 auto;
+      font-family: var(--sans);
+      font-weight: 600;
+      font-size: 13px;
+      padding: 9px 8px;
+      background: var(--white);
+      border: 2px solid var(--ink);
+      border-radius: 20px;
+      cursor: pointer;
+      color: var(--ink);
+      text-align: center;
+    }
+
+    .tab-btn.active {
+      background: var(--vert);
+      border-color: var(--vert);
+      color: #fff;
+    }
+
+    /* ---------- Cards ---------- */
+    .card {
+      background: var(--white);
+      border: 1.5px solid var(--ink);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .card h2 {
+      font-family: var(--serif);
+      font-size: 19px;
+      margin: 0 0 8px;
+      font-weight: 600;
+    }
+
+    .card h3 {
+      font-family: var(--serif);
+      font-size: 16px;
+      margin: 0 0 6px;
+      font-weight: 600;
+    }
+
+    .muted {
+      color: var(--ink-soft);
+      font-size: 13.5px;
+    }
+
+    .rules-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .rule-chip {
+      background: var(--paper);
+      border: 1px dashed var(--ink-soft);
+      border-radius: 4px;
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+
+    .rule-chip b {
+      display: block;
+      font-family: var(--serif);
+      font-size: 15px;
+    }
+
+    /* ---------- Forms / buttons ---------- */
+    input[type=text],
+    textarea,
+    select {
+      width: 100%;
+      font-family: var(--sans);
+      font-size: 15px;
+      padding: 10px 12px;
+      border: 1.5px solid var(--ink);
+      border-radius: 4px;
+      background: var(--white);
+      margin: 4px 0 10px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 44px;
+    }
+
+    label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--ink-soft);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .btn {
+      font-family: var(--sans);
+      font-weight: 700;
+      font-size: 14px;
+      padding: 11px 16px;
+      border-radius: 4px;
+      border: 2px solid var(--ink);
+      cursor: pointer;
+      background: var(--white);
+      color: var(--ink);
+    }
+
+    .btn-primary {
+      background: var(--vert);
+      border-color: var(--vert);
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: transparent;
+    }
+
+    .btn-danger {
+      background: var(--alerte);
+      border-color: var(--alerte);
+      color: #fff;
+    }
+
+    .btn-block {
+      width: 100%;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .file-input-wrap {
+      margin: 6px 0 10px;
+    }
+
+    input[type=file] {
+      font-family: var(--sans);
+      font-size: 13px;
+      width: 100%;
+    }
+
+    .photo-hint {
+      font-size: 15px;
+      color: var(--ink-soft);
+      margin: 2px 0 8px;
+    }
+
+    /* ---------- Plaque badge (team name) ---------- */
+    .plaque-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bleu);
+      color: #fff;
+      border: 2px solid var(--vert);
+      padding: 3px 10px;
+      border-radius: 3px;
+      font-family: var(--serif);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+      font-size: 13px;
+    }
+
+    .team-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .team-pick {
+      background: var(--white);
+      border: 2px solid var(--bleu);
+      color: var(--bleu);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-family: var(--serif);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* ---------- Cluster heading ---------- */
+    .cluster-heading {
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 12px;
+      color: var(--ink-soft);
+      margin: 20px 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .cluster-heading::after {
+      content: '';
+      flex: 1;
+      border-top: 1px dashed var(--ink-soft);
+    }
+
+    /* ---------- Mission cards ---------- */
+    .stop-card {
+      position: relative;
+    }
+
+    .stop-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .stop-num {
+      flex: 0 0 auto;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 2px solid var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 13px;
+      background: var(--paper);
+    }
+
+    .stop-meta {
+      flex: 1;
+    }
+
+    .stop-meta .teaser {
+      color: var(--ink-soft);
+      font-size: 13.5px;
+    }
+
+    .stop-points {
+      font-family: var(--mono);
+      font-weight: 700;
+      color: var(--or);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .precta {
+      background: var(--paper);
+      border: 1.5px dashed var(--ink-soft);
+      border-radius: 4px;
+      padding: 12px;
+      margin-top: 12px;
+      font-size: 13.5px;
+      color: var(--ink-soft);
+      text-align: center;
+    }
+
+    .reveal {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .reveal.open {
+      max-height: 2000px;
+    }
+
+    .memo-box {
+      font-size: 14px;
+      color: var(--ink-soft);
+      border-top: 1px dashed var(--ink-soft);
+      padding-top: 10px;
+      margin-top: 10px;
+    }
+
+    .mission-box {
+      background: var(--paper);
+      border: 1.5px dashed var(--ink);
+      border-radius: 4px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+
+    .mission-box .mission-title {
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--vert);
+      margin-bottom: 4px;
+    }
+
+    .mission-box .mission-text {
+      font-size: 14px;
+    }
+
+    .status-pill {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 10px;
+      margin-top: 8px;
+      font-weight: 700;
+    }
+
+    .status-pill.todo {
+      background: #E4DECB;
+      color: var(--ink-soft);
+    }
+
+    .status-pill.pending {
+      background: #EFDDB8;
+      color: #7A5A16;
+    }
+
+    .status-pill.approved {
+      background: var(--vert);
+      color: #fff;
+    }
+
+    .status-pill.refused {
+      background: var(--alerte);
+      color: #fff;
+    }
+
+    .stamp {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 78px;
+      height: 78px;
+      border-radius: 50%;
+      border: 3px solid var(--vert);
+      color: var(--vert);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 10.5px;
+      line-height: 1.15;
+      transform: rotate(-11deg);
+      background: rgba(255, 253, 247, 0.9);
+      box-shadow: 0 0 0 3px rgba(255, 253, 247, 0.9);
+    }
+
+    .stamp.refused {
+      border-color: var(--alerte);
+      color: var(--alerte);
+    }
+
+    .thumb {
+      width: 100%;
+      max-height: 220px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1.5px solid var(--ink);
+      margin-top: 8px;
+    }
+
+    /* ---------- Leaderboard ---------- */
+    .rank-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px dashed var(--paper-2);
+      flex-wrap: wrap;
+    }
+
+    .rank-row:last-child {
+      border-bottom: none;
+    }
+
+    .rank-num {
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 16px;
+      width: 26px;
+      text-align: center;
+    }
+
+    .rank-row.first .rank-num {
+      color: var(--or);
+    }
+
+    .rank-score {
+      margin-left: auto;
+      text-align: right;
+    }
+
+    .rank-score .pts {
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 17px;
+      color: var(--vert);
+    }
+
+    .rank-score .stops {
+      font-size: 11px;
+      color: var(--ink-soft);
+    }
+
+    .elapsed {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--ink-soft);
+      display: block;
+      margin-top: 2px;
+    }
+
+    .late-tag {
+      color: var(--alerte);
+    }
+
+    /* ---------- Admin ---------- */
+    .pin-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .pin-row input {
+      flex: 1;
+      margin: 0;
+    }
+
+    .mod-card {
+      position: relative;
+    }
+
+    .mod-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .mod-note {
+      background: var(--paper);
+      border-radius: 4px;
+      padding: 8px 10px;
+      font-size: 13.5px;
+      margin-top: 8px;
+    }
+
+    .answer-key {
+      background: #EFE6F5;
+      border-radius: 4px;
+      padding: 8px 10px;
+      font-size: 13px;
+      margin-top: 8px;
+      font-style: italic;
+    }
+
+    .comment-input {
+      margin-top: 8px;
+    }
+
+    .arrival-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 0;
+      border-bottom: 1px dashed var(--paper-2);
+      flex-wrap: wrap;
+    }
+
+    .arrival-row:last-child {
+      border-bottom: none;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 30px 10px;
+      color: var(--ink-soft);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: var(--ink-soft);
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    .footer-note {
+      text-align: center;
+      font-size: 12px;
+      color: var(--ink-soft);
+      margin: 24px 0 8px;
+    }
+  </style>
+
+  <!-- Firebase (compat build — simplest for a single plain script, no build tools needed) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+</head>
+
+<body>
+  <div id="app">
+    <div class="loading">Loading the hunt…</div>
+  </div>
+  <script>
+    (function () {
+
+
+      /* ============================= FIREBASE CONFIG =============================
+        Replace every "PASTE_..." value below with the config Firebase gave you
+        (Project settings > General > Your apps). See the setup notes at the very
+        top of this file for the full walkthrough.
+      
+        NOTE: your previous config got wiped down to "{blur}" at some point (looks
+        like an accidental find-and-replace before uploading) — paste your real
+        values back in below, or nothing will save. */
+      const firebaseConfig = {
+        apiKey: "PASTE_YOUR_API_KEY_HERE",
+        authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+        databaseURL: "https://PASTE_YOUR_PROJECT-default-rtdb.firebaseio.com",
+        projectId: "PASTE_YOUR_PROJECT",
+        storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
+        messagingSenderId: "PASTE_YOUR_SENDER_ID",
+        appId: "PASTE_YOUR_APP_ID"
+      };
+      const CONFIG_IS_PLACEHOLDER = firebaseConfig.apiKey === "PASTE_YOUR_API_KEY_HERE";
+      let db = null;
+      if (!CONFIG_IS_PLACEHOLDER && typeof firebase !== 'undefined') {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+      }
+
+
+      /* ============================= DATA ============================= */
+      /* Point scale: adjust to your needs */
+
+      const LOCATIONS = [
+        // ---- Cluster: Latin Quarter — the home stretch ----
+        {
+          id: 'pantheon', cluster: 'Latin Quarter — the home stretch', points: 100,
+          name: 'The Panthéon', place: 'Place du Panthéon',
+          memo: `The Panthéon was originally built as a church dedicated to Saint Geneviève, the patron saint of Paris, and was later transformed into a national mausoleum. Famous people buried here include Marie Curie, Victor Hugo, Alexandre Dumas and Voltaire.
+
+For a group of scientists, one connection stands out: in 1851, physicist Léon Foucault suspended a 28 kg pendulum from the dome to demonstrate — for the first time, with no telescope and no astronomy — that the Earth rotates. As the pendulum swings, its plane of motion appears to drift, about 11° per hour in Paris, because the building (and the ground under it) is slowly turning beneath it, not the pendulum itself. Parisians queued for hours to watch it; the invitation to the first demonstration reportedly urged visitors to "come and see the Earth turn."`,
+          question: 'Look at the front of the Panthéon. How many large columns support the triangular pediment?',
+          answerKey: '22.',
+          photoTask: 'Recreate a scientific experiment with your team in front of the Panthéon.'
+        },
+        {
+          id: 'rue-mouffetard', cluster: 'Latin Quarter — the home stretch', points: 60,
+          name: 'Rue Mouffetard', place: 'Rue Mouffetard',
+          memo: `Rue Mouffetard is one of the oldest and most atmospheric streets in Paris. Its route follows an ancient Roman road. It climbs the Montagne Sainte-Geneviève and has kept a far more irregular, medieval character than the wide boulevards created during the Haussmann transformation. Today it's famous for its food shops, cafés, restaurants and lively atmosphere — Parisians sometimes call it "La Mouffe."`,
+          question: 'How much does a sugar-and-butter crêpe cost at "Chez Nicos"?',
+          answerKey: 'Around €2.50 (menu prices can drift — accept whatever the team reports and photographs).',
+          photoTask: 'Find the restaurant that makes your team the hungriest. Take a team photo outside it.'
+        },
+        {
+          id: 'arenes-lutece', cluster: 'Latin Quarter — the home stretch', points: 60,
+          name: 'Arènes de Lutèce', place: '49 Rue Monge',
+          memo: `The Arènes de Lutèce are one of the few visible remains of Roman Paris: an amphitheatre dating from around the late 1st or 2nd century AD, once used for spectacles and surprisingly large for ancient Lutetia. For centuries the ruins were forgotten and gradually built over. They were rediscovered during 19th-century construction work, notably around the opening of Rue Monge, and today you can walk freely inside — one of the rare spots in central Paris where you can literally stand inside Roman ruins.`,
+          question: 'Look at the shape of the arena. Is it roughly circular, square or rectangular?',
+          answerKey: 'Roughly oval / elliptical.',
+          photoTask: 'Take a team photo inside the Arènes.'
+        },
+        {
+          id: 'jardin-des-plantes', cluster: 'Latin Quarter — the home stretch', points: 60,
+          name: 'Jardin des Plantes', place: 'Jardin des Plantes',
+          memo: `The Jardin des Plantes is much more than a beautiful garden. It was created in 1626 as the Royal Garden of Medicinal Plants under Louis XIII, and opened to the public not long after. From the start it had a scientific purpose: public lessons in botany, chemistry and anatomy were given here, making it an important centre of scientific education, later closely associated with the Muséum national d'Histoire naturelle. It's a fitting stop for a group of researchers — the place was designed around science and education from day one.`,
+          question: 'Find the main entrance to the garden. What colour are the large gates?',
+          answerKey: "Most Paris park gates are painted in the same dark bottle-green used across the city's ironwork — but this is deliberately simple, so just check it matches what the team's photo shows.",
+          photoTask: 'Take a team photo as if you were scientists discovering a new plant species.'
+        },
+        {
+          id: 'place-estrapade', cluster: 'Latin Quarter — the home stretch', points: 50,
+          name: "Place de l'Estrapade", place: "Place de l'Estrapade",
+          memo: `A small, quiet square in the 5th arrondissement, near the Panthéon. Number 1 Place de l'Estrapade is well known to fans of a certain show as the heroine's apartment building, with several scenes shot around the square. But the place is much older than the show: "Estrapade" is the name of a historical form of judicial punishment once carried out here. Do not Google it.`,
+          question: 'What TV series was filmed at number 1, Place de l\u2019Estrapade?',
+          answerKey: 'Emily in Paris.',
+          photoTask: 'Take a team photo by the fountain.'
+        },
+        {
+          id: 'jardin-luxembourg', cluster: 'Latin Quarter — the home stretch', points: 60,
+          name: 'Jardin du Luxembourg', place: 'Jardin du Luxembourg',
+          memo: `One of the most famous gardens in Paris, surrounding the Palais du Luxembourg (now home to the French Senate). It was created in the early 17th century for Marie de' Medici, widow of King Henry IV, and combines formal French-style parterres with wilder corners, statues, fountains and tree-lined paths. It also hosts concerts, tennis, chess and horticultural displays.`,
+          question: 'Find the large central pond. What do children traditionally sail on it?',
+          answerKey: 'Small model sailboats, rented by the pond.',
+          photoTask: 'Take a team photo by the Grand Bassin (the central pond) — bonus points if a model sailboat is visible!'
+        },
+        {
+          id: 'senat', cluster: 'Latin Quarter — the home stretch', points: 50,
+          name: 'The Sénat / Palais du Luxembourg', place: 'Palais du Luxembourg',
+          memo: `The Palais du Luxembourg was built in the early 17th century for Marie de Medicis, widow of King Henry IV, who wanted a residence inspired by the Palazzo Pitti in Florence. The building later became a prison during the French Revolution and, since 1958, has been the seat of the French Senate, one of the two chambers of the French Parliament.
+
+  The Senate has a long history of scientific connections too: the Palais and its gardens have hosted important scientific institutions and figures, while the Luxembourg Garden remains a place where science, horticulture and public education meet. Today, senators debate and vote on French laws inside the palace.`,
+          question: 'Look at the European flag. How many stars are there?',
+          answerKey: '12.',
+          photoTask: 'Take a team photo in front of the Palais du Luxembourg, recreating a serious parliamentary debate.'
+        },
+        {
+          id: 'sorbonne-universite', cluster: 'Latin Quarter — the home stretch', points: 100,
+          name: 'hEART Conference entrance', place: 'Place Jussieu',
+          memo: `Here is the entrance for the conference, starting tomorrow!`,
+          question: 'Did you enjoy this activity around Paris?',
+          answerKey: '.',
+          photoTask: 'You are arrived at the final point. Take a last team photo in front of the entrance of the conference!'
+        },
+
+        // ---- Cluster: Île de la Cité & Saint-Michel ----
+        {
+          id: 'notre-dame', cluster: 'Île de la Cité & Saint-Michel', points: 100,
+          name: 'Notre-Dame de Paris', place: 'Parvis Notre-Dame',
+          memo: `One of the world's most famous Gothic cathedrals. Construction began in 1163 under Bishop Maurice de Sully and continued for around two centuries. Notre-Dame is known for its twin towers, rose windows, flying buttresses and Gothic architecture, and has played a huge role in French history — Napoleon I was crowned Emperor here in 1804. A devastating fire in 2019 destroyed the roof and spire; the cathedral underwent a major restoration before reopening to visitors.`,
+          question: 'How many large towers can you see on the main façade?',
+          answerKey: '2.',
+          photoTask: 'Take a team photo with the cathedral façade visible — this also doubles as your starting-line photo!'
+        },
+        {
+          id: 'pont-neuf', cluster: 'Île de la Cité & Saint-Michel', points: 60,
+          name: 'Pont Neuf', place: 'Pont Neuf',
+          memo: `The Pont Neuf is the oldest bridge in Paris still standing today. Despite its name meaning "New Bridge", construction began in 1578 and the bridge was completed in the early 17th century, under the reigns of Henry III and Henry IV. At the time, it was innovative: unlike many older Parisian bridges, it had no houses built along it and included wide pavements for pedestrians.
+
+        The Pont Neuf crosses the Seine at the western end of Île de la Cité and has been one of the city's most important crossings for centuries.
+
+        This is also an important practical landmark for the conference: the boat for the welcome reception on Monday will depart from here.`,
+          question: 'In what year was the Pont Neuf completed?',
+          answerKey: '1607.',
+          photoTask: 'Take a team photo on the Pont Neuf with the Seine visible in the background.'
+        },
+        {
+          id: 'shakespeare-co', cluster: 'Île de la Cité & Saint-Michel', points: 40,
+          name: 'Shakespeare and Company', place: '37 Rue de la Bûcherie',
+          memo: `One of the most famous English-language bookshops in the world. The current shop opened in 1951, founded by George Whitman, and became a meeting place for English-speaking writers, artists and travellers. It was named in homage to the original Shakespeare and Company opened by Sylvia Beach in 1919, whose shop was the literary home of the "Lost Generation" — Hemingway, Joyce, Fitzgerald and others — and first published Joyce's "Ulysses." Located directly opposite Notre-Dame, it's one of the most recognisable literary spots in Paris.`,
+          question: 'Generations of travelling writers, nicknamed "Tumbleweeds," have slept for free among the books here. What were they traditionally asked to do in exchange?',
+          answerKey: 'Help out in the shop for a couple of hours, read a book a day, and write a one-page autobiography.',
+          photoTask: "Take a team photo out front, by the green façade. Note: photography isn't allowed inside the shop, so keep the cameras out on the pavement."
+        },
+        {
+          id: 'sainte-chapelle', cluster: 'Île de la Cité & Saint-Michel', points: 70,
+          name: 'Sainte-Chapelle', place: '8 Boulevard du Palais',
+          memo: `Built between 1242 and 1248 for King Louis IX (Saint Louis) to house holy relics including the Crown of Thorns, Sainte-Chapelle is one of the masterpieces of High Gothic architecture. Its upper chapel is ringed by 15 enormous stained-glass windows filled with over a thousand small panels telling biblical stories — the building feels less like a stone church and more like a giant glass lantern.`,
+          question: 'How many large stained-glass windows fill the upper chapel?',
+          answerKey: '15.',
+          photoTask: "Sainte-Chapelle sits inside the Palais de Justice, behind an airport-style security line that can easily eat 30–60 minutes — even with a ticket. Skip it entirely: take your team photo from Boulevard du Palais or across the river, with the spire visible above the walls."
+        },
+        {
+          id: 'place-saint-michel', cluster: 'Île de la Cité & Saint-Michel', points: 60,
+          name: 'Place Saint-Michel', place: 'Place Saint-Michel',
+          memo: `Place Saint-Michel sits right on the Seine, on the boundary between the 5th and 6th arrondissements. It's dominated by the monumental Fontaine Saint-Michel, built during Haussmann's 19th-century transformation of Paris, showing the Archangel Michael defeating the Devil. Heads up: the fountain finished a long, careful restoration around mid-to-late 2026, so double-check closer to your date that the scaffolding is fully down.`,
+          question: 'Who is the winged figure at the centre of the fountain?',
+          answerKey: 'Saint Michael the Archangel.',
+          photoTask: 'Take a team photo with the fountain behind you.'
+        },
+        {
+          id: 'hotel-de-ville', cluster: 'Île de la Cité & Saint-Michel', points: 80,
+          name: 'Hôtel de Ville', place: 'Place de l\u2019Hôtel-de-Ville',
+          memo: `The Hôtel de Ville is the City Hall of Paris and one of the largest historic municipal buildings in Europe. The current building is a reconstruction: the previous one burned down during the Paris Commune in 1871. It was rebuilt from 1873 to 1882 by architects Théodore Ballu and Édouard Deperthes, who recreated much of its Renaissance-style look while adding then-modern features like electricity, telephones, lifts and central heating.`,
+          question: 'Who is the current Mayor of Paris?',
+          answerKey: 'Emmanuel Grégoire, in office since 29 March 2026 (double-check closer to your event date in case this changes).',
+          photoTask: 'Take a team photo on the square with the Hôtel de Ville behind you.'
+        },
+
+        // ---- Cluster: Institut de France & Saint-Germain ----
+        {
+          id: 'pont-des-arts', cluster: 'Institut de France & Saint-Germain', points: 50,
+          name: 'Pont des Arts', place: 'Pont des Arts',
+          memo: `A pedestrian bridge crossing the Seine between the Louvre and the Institut de France. The first bridge, built 1801–1804, was the first metal bridge in Paris. It became world-famous for its views — and for the thousands of "love locks" once attached to its railings, eventually removed because their weight was damaging the structure. The city carried out a fresh round of renovation work on the bridge in 2026.`,
+          question: 'Look across the river from the bridge. Which building with a large dome can you see?',
+          answerKey: 'The Institut de France.',
+          photoTask: 'Take a team photo on the bridge with the Seine behind you.'
+        },
+        {
+          id: 'samaritaine', cluster: 'Institut de France & Saint-Germain', points: 50,
+          name: 'La Samaritaine', place: '9 Rue de la Monnaie',
+          memo: `One of Paris's great department stores, founded in 1870 by Ernest Cognacq as a tiny shop of about 47 m². It expanded dramatically over the following decades. Today it wears two very different faces: a dazzling Art Nouveau façade of glass, steel and colourful enamel-lava panels by architect Frantz Jourdain on Rue de la Monnaie, and — since a 2021 renovation — a rippling, ultra-modern glass "wave" façade of 343 curved panels by the architects SANAA on the Rue de Rivoli side.`,
+          question: 'Which of the two façades is covered in colourful Art Nouveau enamel panels — Rue de Rivoli or Rue de la Monnaie?',
+          answerKey: 'Rue de la Monnaie (the Rue de Rivoli side is the modern rippling glass one).',
+          photoTask: 'Take a team photo with the most distinctive part of the Samaritaine façade you can find.'
+        },
+        {
+          id: 'monnaie-de-paris', cluster: 'Institut de France & Saint-Germain', points: 40,
+          name: 'Monnaie de Paris', place: '11 Quai de Conti',
+          memo: `The Monnaie de Paris, the French Mint, traces its roots back to the year 864, making it France's oldest institution and one of the oldest continuously running enterprises in the world. Its job is producing coins, medals and objects in precious metals — a striking mix of centuries-old craftsmanship (engraving, striking, casting, metalworking) housed in an 18th-century building on the Quai de Conti.`,
+          question: "Look at the building's main entrance. What material is the façade made of?",
+          answerKey: 'Stone.',
+          photoTask: 'Take a team photo in front of the Monnaie de Paris entrance.'
+        },
+        {
+          id: 'saint-germain', cluster: 'Institut de France & Saint-Germain', points: 40,
+          name: 'Église Saint-Germain-des-Prés', place: '3 Place Saint-Germain-des-Prés',
+          memo: `One of the oldest religious sites in Paris, founded in the 6th century as a royal abbey by Childebert, son of Clovis. Its bell tower — begun around 990 — is the oldest surviving piece of church architecture in Paris. The building had a dramatic history, including a stint as a saltpetre refinery during the Revolution, and later became closely tied to the intellectual and artistic life of the Saint-Germain-des-Prés neighbourhood, especially in the 20th century.`,
+          question: 'Look at the church tower. What colour is the clock face?',
+          answerKey: "Not independently confirmed — there's no fixed answer key here, just check the team's photo shows a clock face and take their word for the colour.",
+          photoTask: 'Take a team photo in front of the church.'
+        },
+        {
+          id: 'assemblee-nationale', cluster: 'Institut de France & Saint-Germain', points: 70,
+          name: 'Assemblée nationale / Palais Bourbon', place: 'Palais Bourbon',
+          memo: `The Palais Bourbon is the historic home of the French National Assembly, the lower house of the French Parliament. The building was originally constructed in the 18th century for Louise-Françoise de Bourbon, daughter of Louis XIV and Madame de Montespan. After the French Revolution, it became a seat of representative government and has remained closely associated with French parliamentary life.
+
+  The National Assembly is where deputies debate and vote on laws. The building faces the Place de la Concorde across the Pont de la Concorde, creating one of the most recognisable views of Paris's political centre.`,
+          question: 'Look at the front of the Palais Bourbon. How many columns are in the large classical colonnade?',
+          answerKey: '12.',
+          photoTask: 'Take a team photo in front of the Palais Bourbon, posing as if you were about to vote on an important law.'
+        },
+        {
+          id: 'musee-orsay', cluster: 'Institut de France & Saint-Germain', points: 70,
+          name: "Musée d'Orsay", place: "Musée d'Orsay",
+          memo: `The Musée d'Orsay is housed in a former railway station built for the 1900 Exposition Universelle. The Gare d'Orsay was designed to welcome visitors arriving in Paris for the world's fair and was famous for its impressive Beaux-Arts architecture and enormous clock.
+
+  The station eventually became unsuitable for modern long-distance trains and was transformed into a museum, opening in 1986. Today the Musée d'Orsay is particularly famous for its collection of Impressionist and Post-Impressionist art, including works by Monet, Renoir, Degas, Cézanne and Van Gogh.`,
+          question: 'Look at the large clock on the front of the Musée d’Orsay. How many spokes divide the clock face?',
+          answerKey: '12.',
+          photoTask: 'Take a team photo posing like characters in an Impressionist painting.'
+        },
+        // ---- Cluster: Louvre & Palais-Royal ----
+        {
+          id: 'louvre-pyramid', cluster: 'Louvre & Palais-Royal', points: 100,
+          name: 'The Louvre Pyramid', place: 'Cour Napoléon',
+          memo: `One of the most famous modern landmarks in Paris, designed by Chinese-American architect I. M. Pei and inaugurated on 29 March 1989 as the new main entrance to the Louvre. The glass Pyramid is about 21 metres high with a square base roughly 34 metres wide, and was fiercely controversial at first for its ultra-modern contrast with the historic Louvre Palace — today it's one of the symbols of Paris. Fun detail: the Louvre actually has five pyramids in total — the main one, three smaller pyramids in the courtyard, and an inverted pyramid underground.`,
+          question: 'How many smaller pyramids can you see around the main Pyramid?',
+          answerKey: '3.',
+          photoTask: 'Take a team photo with the Louvre Pyramid clearly visible.'
+        },
+        {
+          id: 'buren-columns', cluster: 'Louvre & Palais-Royal', points: 60,
+          name: 'Les Colonnes de Buren', place: 'Cour d\u2019Honneur, Palais-Royal',
+          memo: `Officially titled "Les Deux Plateaux," this contemporary artwork by French artist Daniel Buren was installed in the courtyard of the Palais-Royal in 1986. It was controversial at the time for bringing contemporary art into such a historic setting. The piece is made of many black-and-white striped columns of different heights, and — unusually for public art — visitors are meant to walk among them and interact with the installation, creating a deliberate contrast between old and new.`,
+          question: 'Look at the columns. Which two colours are used for the stripes?',
+          answerKey: 'Black and white.',
+          photoTask: 'Take a team photo among the Buren Columns (you can stand on them).'
+        },
+        {
+          id: 'place-vendome', cluster: 'Louvre & Palais-Royal', points: 60,
+          name: 'Place Vendôme', place: 'Place Vendôme',
+          memo: `One of the most prestigious squares in Paris, created under Louis XIV to celebrate royal power, known for its elegant architecture and unusual octagonal shape. At its centre stands the Vendôme Column, erected under Napoleon to celebrate the French victory at the Battle of Austerlitz in 1805. Today the square is closely tied to luxury and fine jewellery, with several historic French jewellery houses on its addresses — a neat example of Paris layering royal history, Napoleon and modern luxury in one place.`,
+          question: 'Picture the square from above. How many sides does Place Vendôme have?',
+          answerKey: '8.',
+          photoTask: 'Take a team photo with the Vendôme Column.'
+        },
+        {
+          id: 'rue-de-rivoli', cluster: 'Louvre & Palais-Royal', points: 50,
+          name: 'Rue de Rivoli', place: '113 Rue de Rivoli',
+          memo: `One of the great historic streets of central Paris. The stretch near the Louvre was ordered by Napoleon Bonaparte and laid out by architects Percier and Fontaine between 1801 and 1804, with strict rules to keep its façades uniform. Further east, the street was extended during Haussmann's 19th-century transformation, taking on the long stone façades and regular windows now seen as classically "Haussmannian."`,
+          question: 'Napoleon had this section of the street built with a repeating feature at ground level, so Parisians could stroll under cover from rain and traffic. What do you see running along the ground floor?',
+          answerKey: 'Covered arcades (a continuous colonnaded walkway).',
+          photoTask: 'Take a team photo at number 113, Rue de Rivoli.'
+        }
+      ];
+
+      const BONUS_ACTIONS = [
+        {
+          id: 'bonus-plaques', repeatable: true, maxCount: 4, points: 20,
+          name: 'Hunt for Commemorative Plaques', place: 'Scattered across the 4th, 5th and 6th arrondissements',
+          memo: `Paris quietly honours its great minds with small marble plaques on the buildings where they once lived. Several are an easy detour from today's route. Each different plaque you find and photograph is worth points, up to 4 plaques.`,
+          options: [
+            '10 Rue Le Goff — Sigmund Freud',
+            '25 Quai de Bourbon (4th) — Léon Blum',
+            '14 Rue Rollin (5th) — René Descartes',
+            '2 Rue des Écoles (5th) — Louis Braille',
+            "3 Rue de l'Estrapade (5th) — Denis Diderot",
+            '11 Rue de la Bûcherie (5th) — Simone de Beauvoir',
+            '42 Rue Soufflot — Henri Poincaré'
+          ],
+          question: 'Which plaque did you find?',
+          photoTask: 'Take a team photo next to the plaque, close enough to read the name.'
+        },
+        {
+          id: 'bonus-order-french', points: 100,
+          name: 'Order Something in French', place: 'Any bakery along the way',
+          memo: `[Forbidden for French speakers] Ordering en français is a rite of passage — and bakers are usually delighted to help you practise. A classic line to start with: "Bonjour, je voudrais une baguette, s'il vous plaît." Bonus style points if you can answer "bien cuite ou pas trop cuite?" (well done or lightly baked?).`,
+          question: 'What did you order, and how did it go?',
+          photoTask: 'Film or photograph a teammate ordering a baguette (or any treat) entirely in French, from asking to being handed the item.'
+        },
+        {
+          id: 'bonus-haussmann', points: 50,
+          name: 'Spot the Haussmannian Code', place: 'Any typical Haussmannian street',
+          memo: `Haussmann's 19th-century building code was remarkably strict: uniform cream limestone façades, a maximum of six floors, and matching wrought-iron balconies placed on two specific floors to balance the composition — the grand "étage noble" and one floor near the top, under the mansard roof.`,
+          question: 'Which two floors traditionally get the matching balcony?',
+          answerKey: "The 2nd floor (the 'étage noble') and the 5th floor.",
+          photoTask: 'Take a team photo in front of a Haussmannian building, and count how many floors it has.'
+        },
+        {
+          id: 'bonus-metro', points: 60,
+          name: 'Ride the Métro', place: 'Any Paris Métro station',
+          memo: `Opened in 1900, the Paris Métro is famous for its Art Nouveau station entrances — the swirling green ironwork and amber lamps designed by architect Hector Guimard. Only a couple dozen of the original Guimard entrances survive today, most still in the more central stations.`,
+          question: 'How much costs a single metro ticket?',
+          answerKey: '2.55€.',
+          photoTask: 'Take a team photo by a station entrance, with a station name sign clearly visible.'
+        },
+        {
+          id: 'bonus-rer', points: 70,
+          name: 'Catch the RER', place: 'Any RER station',
+          memo: `The RER (Réseau Express Régional) is the fast commuter-rail network that complements the Métro, running deeper and further out — it's how you'd get to the airports or the suburbs. Central Paris has far fewer RER stations than Métro stations, so this one usually takes a bit more of a detour.`,
+          question: 'There is a key difference in the ticket validation system between metros and RERs. Look at people getting in and out, could you notice the difference ?',
+          answerKey: 'RER requires to tap in and tap out, whereas metro requires only to tap in.',
+          photoTask: 'Take a team photo by a station entrance, with the RER sign clearly visible.'
+        },
+        {
+          id: 'bonus-frenchy', points: 60,
+          name: 'The Most Frenchy Picture', place: 'Anywhere',
+          memo: `Every team sees Paris a little differently. This bonus is a judgment call, not a quiz — organizers will simply pick whichever photo captures "France" best.`,
+          question: 'In one sentence, why is this the most French photo your team could find?',
+          answerKey: "No fixed answer — judge this one on charm and creativity.",
+          photoTask: 'Take the single most quintessentially "French" photo your team can find.'
+        }
+      ];
+
+      const ALL_ITEMS = LOCATIONS.concat(BONUS_ACTIONS);
+      function getItem(id) { return ALL_ITEMS.find(i => i.id === id); }
+
+      /* Split each item's total points into a photo part and a question part.
+         Every item with a real question gets a flat 20 points for the answer;
+         whatever remains of its total goes to the photo. The repeatable plaques
+         bonus isn't split — there's no single right answer to grade there, so
+         its whole value stays on the photo. */
+      const QUESTION_POINTS = 20;
+      ALL_ITEMS.forEach(function (item) {
+        if (item.repeatable) {
+          item.photoPoints = item.points;
+          item.questionPoints = 0;
+        } else {
+          item.questionPoints = QUESTION_POINTS;
+          item.photoPoints = Math.max(0, item.points - QUESTION_POINTS);
+        }
+      });
+
+      const CLUSTER_ORDER = [
+        'Latin Quarter — the home stretch',
+        'Île de la Cité & Saint-Michel',
+        'Institut de France & Saint-Germain',
+        'Louvre & Palais-Royal'
+      ];
+
+      const NAME_SUGGESTIONS = [
+        'The Overfitted', 'p < 0.05', 'Reviewer 2', 'Grant Proposal Gang',
+        'Correlation ≠ Causation', 'The Three Sigmas', 'Null Hypothesis Ninjas',
+        'The Replication Crisis', 'Delta-T Express', 'Statistically Significant',
+        'Post-Docs After Dark', 'Peer Review Purgatory'
+      ];
+
+      /* The admin PIN used to live here as plain text — it's now checked by
+         index.php on your server instead (see that file), so it never ships to
+         the browser. Set/change the real PIN inside index.php. */
+      const HUNT_DURATION_MS = 2 * 60 * 60 * 1000 + 120; // 2 hours
+      const LATE_PENALTY_PER_MIN = 6; // points deducted per minute late
+
+      /* ============================= STATE ============================= */
+      let state = {
+        tab: 'home',
+        teams: [],
+        submissions: [],
+        game: { startedAt: null },
+        currentTeamId: null,
+        modoUnlocked: false,
+        submitting: {},
+        storageOk: true,
+        storageChecked: false
+      };
+
+      /* ============================= FIREBASE HELPERS ============================= */
+      function objectToSortedArray(obj, sortFn) {
+        const arr = Object.keys(obj || {}).map(k => obj[k]);
+        if (sortFn) arr.sort(sortFn);
+        return arr;
+      }
+
+      async function checkStorage() {
+        state.storageChecked = true;
+        if (CONFIG_IS_PLACEHOLDER || !db) {
+          state.storageOk = false;
+          return;
+        }
+        try {
+          await db.ref('__healthcheck__').set(Date.now());
+          state.storageOk = true;
+        } catch (e) {
+          console.error('firebase healthcheck failed', e);
+          state.storageOk = false;
+        }
+      }
+
+      function attachLiveListeners() {
+        if (!db) return;
+        db.ref('teams').on('value', function (snap) {
+          state.teams = objectToSortedArray(snap.val(), (a, b) => a.createdAt - b.createdAt);
+          render();
+        });
+        db.ref('submissions').on('value', function (snap) {
+          state.submissions = objectToSortedArray(snap.val());
+          render();
+        });
+        db.ref('game').on('value', function (snap) {
+          state.game = snap.val() || { startedAt: null };
+          render();
+        });
+      }
+
+      function genId() {
+        return Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+      }
+
+      function storageErrorMessage(action, e) {
+        if (CONFIG_IS_PLACEHOLDER) {
+          return "This file still has placeholder Firebase settings. Open it in a text editor, find the 'FIREBASE CONFIG' block near the top of the script, and paste in your own free project's config — see the setup notes at the very top of the file.";
+        }
+        if (!state.storageOk) {
+          return "Could not reach the database. Double-check your Firebase config values, that Realtime Database rules allow read/write, and your internet connection.";
+        }
+        return 'Could not ' + action + (e && e.message ? (' — ' + e.message) : '') + '. Please try again.';
+      }
+
+      /* ============================= IMAGE COMPRESSION ============================= */
+      function compressImage(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => {
+            const img = new Image();
+            img.onload = () => {
+              const maxW = 640;
+              const scale = Math.min(1, maxW / img.width);
+              const w = Math.max(1, Math.round(img.width * scale));
+              const h = Math.max(1, Math.round(img.height * scale));
+              const canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, w, h);
+              resolve(canvas.toDataURL('image/jpeg', 0.6));
+            };
+            img.onerror = () => reject(new Error('image decode failed'));
+            img.src = e.target.result;
+          };
+          reader.onerror = () => reject(new Error('file read failed'));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      /* ============================= ACTIONS ============================= */
+      async function createTeam() {
+        const input = document.getElementById('team-name-input');
+        const name = (input && input.value || '').trim();
+        if (!name) { alert('Choose a name for your team (or tap 🎲).'); return; }
+        const team = { id: genId(), name: name, createdAt: Date.now(), arrivedAt: null };
+        try {
+          await db.ref('teams/' + team.id).set(team);
+          state.currentTeamId = team.id;
+          state.tab = 'missions';
+          render();
+        } catch (e) {
+          console.error(e);
+          alert(storageErrorMessage('save your team', e));
+        }
+      }
+      function selectTeam(id) { state.currentTeamId = id; render(); }
+
+      function getMySubmission(itemId) {
+        return state.submissions.find(s => s.teamId === state.currentTeamId && s.itemId === itemId);
+      }
+
+      async function submitItem(itemId) {
+        if (!state.currentTeamId) { alert('Create or join your team on the Home tab first.'); return; }
+        const item = getItem(itemId);
+        const fileInput = document.getElementById('file-' + itemId);
+        const file = fileInput && fileInput.files && fileInput.files[0];
+        let note = '';
+        const select = document.getElementById('select-' + itemId);
+        const noteInput = document.getElementById('note-' + itemId);
+        if (select) note = select.value;
+        else if (noteInput) note = noteInput.value.trim();
+        const team = state.teams.find(t => t.id === state.currentTeamId);
+
+        // Repeatable bonus (plaques): unchanged — one fresh record per plaque found.
+        if (item.repeatable) {
+          if (!file) { alert('Add a photo before sending your proof!'); return; }
+          state.submitting[itemId] = true; render();
+          try {
+            const photoData = await compressImage(file);
+            const id = genId();
+            const submission = {
+              id: id, teamId: state.currentTeamId, teamName: team ? team.name : '?',
+              itemId: itemId, itemName: item ? item.name : itemId,
+              photo: photoData, note: note, timestamp: Date.now(), status: 'pending', moderatorComment: ''
+            };
+            await db.ref('submissions/' + id).set(submission);
+            if (fileInput) fileInput.value = '';
+          } catch (e) {
+            console.error(e);
+            alert(storageErrorMessage('send your proof', e));
+          }
+          state.submitting[itemId] = false;
+          render();
+          return;
+        }
+
+        // Normal spots: one record per team+item (deterministic key), photo and
+        // answer are graded independently, so resubmitting only touches whichever
+        // part isn't approved yet.
+        const key = state.currentTeamId + '__' + itemId;
+        const existing = getMySubmission(itemId);
+
+        let photoStatus, photoComment;
+        if (file) {
+          photoStatus = 'pending'; photoComment = '';
+        } else if (existing && existing.photoStatus === 'approved') {
+          photoStatus = 'approved'; photoComment = existing.photoComment || '';
+        } else {
+          alert('Add a photo before sending your proof!'); return;
+        }
+
+        const hasQuestion = item.questionPoints > 0;
+        let questionStatus, questionComment;
+        if (!hasQuestion) {
+          questionStatus = 'none'; questionComment = '';
+        } else if (existing && existing.questionStatus === 'approved' && note === existing.note) {
+          questionStatus = 'approved'; questionComment = existing.questionComment || '';
+        } else {
+          questionStatus = 'pending'; questionComment = '';
+        }
+
+        state.submitting[itemId] = true; render();
+        try {
+          const photoData = file ? await compressImage(file) : existing.photo;
+          const submission = {
+            id: key, teamId: state.currentTeamId, teamName: team ? team.name : '?',
+            itemId: itemId, itemName: item ? item.name : itemId,
+            photo: photoData, photoStatus: photoStatus, photoComment: photoComment,
+            note: note, questionStatus: questionStatus, questionComment: questionComment,
+            timestamp: Date.now()
+          };
+          await db.ref('submissions/' + key).set(submission);
+          if (fileInput) fileInput.value = '';
+        } catch (e) {
+          console.error(e);
+          alert(storageErrorMessage('send your proof', e));
+        }
+        state.submitting[itemId] = false;
+        render();
+      }
+
+      async function tryUnlockModo() {
+        const input = document.getElementById('modo-pin-input');
+        const val = input ? input.value.trim() : '';
+        if (!val) { alert('Type the PIN first.'); return; }
+        try {
+          const res = await fetch('login.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'pin=' + encodeURIComponent(val)
+          });
+          const data = await res.json();
+          if (data && data.success) {
+            state.modoUnlocked = true;
+            render();
+          } else {
+            alert('Incorrect code.');
+          }
+        } catch (e) {
+          console.error(e);
+          alert('Could not check the PIN. Make sure index.php is uploaded next to this HTML file on a PHP-capable host (this check will not work on a plain static host like GitHub Pages).');
+        }
+      }
+
+      // Repeatable bonus (plaques): single combined approve/reject, as before.
+      async function moderateRepeatable(subId, newStatus) {
+        const commentInput = document.getElementById('comment-' + subId);
+        const comment = commentInput ? commentInput.value.trim() : '';
+        try {
+          await db.ref('submissions/' + subId).update({ status: newStatus, moderatorComment: comment });
+        } catch (e) {
+          console.error(e);
+          alert(storageErrorMessage('update this submission', e));
+        }
+      }
+
+      // Normal spots: photo and answer are approved/rejected independently.
+      async function moderatePhoto(subId, newStatus) {
+        const commentInput = document.getElementById('photo-comment-' + subId);
+        const comment = commentInput ? commentInput.value.trim() : '';
+        try {
+          await db.ref('submissions/' + subId).update({ photoStatus: newStatus, photoComment: comment });
+        } catch (e) {
+          console.error(e);
+          alert(storageErrorMessage('update this photo', e));
+        }
+      }
+      async function moderateQuestion(subId, newStatus) {
+        const commentInput = document.getElementById('question-comment-' + subId);
+        const comment = commentInput ? commentInput.value.trim() : '';
+        try {
+          await db.ref('submissions/' + subId).update({ questionStatus: newStatus, questionComment: comment });
+        } catch (e) {
+          console.error(e);
+          alert(storageErrorMessage('update this answer', e));
+        }
+      }
+
+      async function startHunt() {
+        try {
+          await db.ref('game').set({ startedAt: Date.now() });
+        } catch (e) {
+          console.error(e);
+          alert(storageErrorMessage('start the hunt', e));
+        }
+      }
+
+      async function markArrived(teamId, arrived) {
+        try {
+          await db.ref('teams/' + teamId).update({ arrivedAt: arrived ? Date.now() : null });
+        } catch (e) {
+          console.error(e);
+          alert(storageErrorMessage('update arrival', e));
+        }
+      }
+
+      async function resetGame() {
+        if (!confirm('This will delete every team and every submission, for everyone. Continue?')) return;
+        if (!confirm('Really sure? This cannot be undone.')) return;
+        try {
+          await Promise.all([
+            db.ref('teams').remove(),
+            db.ref('submissions').remove(),
+            db.ref('game').remove()
+          ]);
+          state.currentTeamId = null;
+        } catch (e) {
+          console.error(e);
+          alert(storageErrorMessage('reset the game', e));
+        }
+      }
+
+      async function sendComment(subId, field) {
+        const input = document.getElementById(field + '-note-input-' + subId);
+        const value = input ? input.value.trim() : '';
+        const updates = {};
+        updates[field] = value;
+        try {
+          await db.ref('submissions/' + subId).update(updates);
+        } catch (e) {
+          console.error(e);
+          alert(storageErrorMessage('send this comment', e));
+        }
+      }
+
+      function setTab(tab) { state.tab = tab; render(); }
+
+      function pickRandomName() {
+        const input = document.getElementById('team-name-input');
+        if (!input) return;
+        input.value = NAME_SUGGESTIONS[Math.floor(Math.random() * NAME_SUGGESTIONS.length)];
+      }
+
+      function revealItem(itemId) {
+        const block = document.getElementById('reveal-' + itemId);
+        const cta = document.getElementById('precta-' + itemId);
+        if (block) block.classList.add('open');
+        if (cta) cta.style.display = 'none';
+      }
+
+      /* ============================= SCORING ============================= */
+      function scoreForTeam(teamId) {
+        let pts = 0, count = 0;
+        ALL_ITEMS.forEach(item => {
+          if (item.repeatable) {
+            const approved = state.submissions.filter(s => s.teamId === teamId && s.itemId === item.id && s.status === 'approved');
+            const n = Math.min(approved.length, item.maxCount || 99);
+            pts += n * item.points; count += n;
+            return;
+          }
+          const sub = state.submissions.find(s => s.teamId === teamId && s.itemId === item.id);
+          if (!sub) return;
+          let itemPts = 0, touched = false;
+          if (sub.photoStatus === 'approved') {
+            itemPts += item.photoPoints; touched = true;
+            // Answer points only count once the photo itself is validated.
+            if (item.questionPoints > 0 && sub.questionStatus === 'approved') { itemPts += item.questionPoints; }
+          }
+          if (touched) { pts += itemPts; count += 1; }
+        });
+        return { points: pts, count: count };
+      }
+
+      function latenessForTeam(team) {
+        if (!state.game.startedAt || !team.arrivedAt) return { lateMin: 0, penalty: 0 };
+        const deadline = state.game.startedAt + HUNT_DURATION_MS;
+        const lateMin = Math.max(0, Math.ceil((team.arrivedAt - deadline) / 60000));
+        return { lateMin: lateMin, penalty: lateMin * LATE_PENALTY_PER_MIN };
+      }
+
+      function fmtElapsed(ms) {
+        const totalSec = Math.max(0, Math.floor(ms / 1000));
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
+        if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+      }
+      function fmtClock(ts) {
+        const d = new Date(ts);
+        return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      }
+
+      /* ============================= RENDER ============================= */
+      function esc(str) {
+        const d = document.createElement('div');
+        d.textContent = str == null ? '' : str;
+        return d.innerHTML;
+      }
+
+      function renderStorageBanner() {
+        if (state.storageOk) return '';
+        if (CONFIG_IS_PLACEHOLDER) {
+          return `<div class="warning-banner"><b>⚠️ Setup needed.</b> This file still has placeholder Firebase settings. Open the HTML file in a text editor, find the <code>firebaseConfig</code> block near the top of the script, and paste in your own free Firebase project's config (see the setup notes at the very top of the file). Team creation and submissions won't save until then.</div>`;
+        }
+        return `<div class="warning-banner"><b>⚠️ Can't reach the database.</b> Double-check your Firebase config, that Realtime Database rules allow read/write, and your connection, then reload the page.</div>`;
+      }
+
+      function renderHeader() {
+        let timerHtml;
+        if (!state.game.startedAt) {
+          timerHtml = `<div id="chrono-wrap">Waiting for the organizers to start the hunt…</div>`;
+        } else {
+          const remaining = state.game.startedAt + HUNT_DURATION_MS - Date.now();
+          const low = remaining < 15 * 60 * 1000;
+          timerHtml = `<div id="chrono-wrap" class="${remaining <= 0 || low ? 'low' : ''}">⏱ ${remaining <= 0 ? "Time's up — head to Jussieu!" : fmtElapsed(remaining) + ' left'}</div>`;
+        }
+        return `
+  <div class="header-plaque">
+    <div class="eyebrow">Left Bank · 5th &amp; 6th arrondissements</div>
+    <h1>Paris Scavenger Hunt</h1>
+    <div class="sub">Start anywhere · Finish at Sorbonne Université, Jussieu</div>
+    ${timerHtml}
+  </div>
+  <div class="tabs">
+    <button class="tab-btn ${state.tab === 'home' ? 'active' : ''}" data-action="switch-tab" data-tab="home">Home</button>
+    <button class="tab-btn ${state.tab === 'missions' ? 'active' : ''}" data-action="switch-tab" data-tab="missions">Missions</button>
+    <button class="tab-btn ${state.tab === 'add-missions' ? 'active' : ''}" data-action="switch-tab" data-tab="add-missions">Additional Missions</button>
+    <button class="tab-btn ${state.tab === 'leaderboard' ? 'active' : ''}" data-action="switch-tab" data-tab="leaderboard">Leaderboard</button>
+    <button class="tab-btn ${state.tab === 'admin' ? 'active' : ''}" data-action="switch-tab" data-tab="admin">🔒 Admin</button>
+  </div>`;
+      }
+
+      function renderHome() {
+        const team = state.teams.find(t => t.id === state.currentTeamId);
+        let teamCard;
+        if (team) {
+          teamCard = `
+    <div class="card">
+      <h2>Your team</h2>
+      <span class="plaque-badge">${esc(team.name)}</span>
+      <p class="muted" style="margin-top:10px;">Head to the <b>Missions</b> tab to see every spot and pick which ones to attempt.</p>
+    </div>`;
+        } else {
+          const otherTeams = state.teams.length ? `
+      <p class="muted" style="margin-top:14px;">Already created by a teammate? Join it here:</p>
+      <div class="team-list">
+        ${state.teams.map(t => `<button class="team-pick" data-action="select-team" data-id="${t.id}">${esc(t.name)}</button>`).join('')}
+      </div>` : '';
+          teamCard = `
+    <div class="card">
+      <h2>Create your team</h2>
+      <label>Team name</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="team-name-input" placeholder="e.g. Reviewer 2" maxlength="40">
+        <button class="btn btn-secondary" data-action="random-name" title="Random name">🎲</button>
+      </div>
+      <button class="btn btn-primary btn-block" data-action="create-team">Create my team</button>
+      ${otherTeams}
+    </div>`;
+        }
+
+        return `
+    ${renderStorageBanner()}
+    <div class="card">
+      <h2>How it works</h2>
+      <div class="rules-grid">
+        <div class="rule-chip"><b>4–5</b>per team</div>
+        <div class="rule-chip"><b>2h max</b>clock starts when the organizers launch the hunt</div>
+        <div class="rule-chip"><b>📸 required</b>one team photo per mission — it's fine if one teammate is missing (they're probably the photographer!)</div>
+        <div class="rule-chip"><b>Your choice</b>24 spots on the map — nobody is expected to do them all</div>
+      </div>
+      <p class="muted" style="margin-top:10px;">Attach your photo first — that's what unlocks the story and the question for each spot. Fill in your answer, then send it for review. Both the photo and the answer are checked by an organizer before points are awarded.</p>
+      <p class="muted" style="margin-top:8px;">⏱ Arriving late costs <b>${LATE_PENALTY_PER_MIN} points per minute</b> — an organizer logs your arrival time as soon as you check in at Jussieu.</p>
+    </div>
+    ${teamCard}
+  `;
+      }
+
+      function renderItemCard(item, index) {
+        if (item.repeatable) {
+          return renderRepeatableCard(item);
+        }
+        const sub = getMySubmission(item.id);
+        const hasQuestion = item.questionPoints > 0;
+        const photoStatus = sub ? sub.photoStatus : 'todo';
+        const questionStatus = sub ? sub.questionStatus : (hasQuestion ? 'todo' : 'none');
+        const isSubmitting = !!state.submitting[item.id];
+        const label = { todo: 'To do', pending: 'Pending review', approved: 'Approved', refused: 'Needs another try', none: '—' };
+
+        const bothDone = photoStatus === 'approved' && (!hasQuestion || questionStatus === 'approved');
+        let stamp = '';
+        if (bothDone) stamp = `<div class="stamp">APPROVED<br>✓</div>`;
+        else if (photoStatus === 'refused' || questionStatus === 'refused') stamp = `<div class="stamp refused">TRY<br>AGAIN</div>`;
+
+        const alreadyRevealed = !!sub;
+
+        let body;
+        if (bothDone) {
+          const photoNote = sub && sub.photoComment ? `<div class="mod-note">💬 Organizer note on the photo: ${esc(sub.photoComment)}</div>` : '';
+          const questionNote = sub && sub.questionComment ? `<div class="mod-note">💬 Organizer note on the answer: ${esc(sub.questionComment)}</div>` : '';
+          body = `${sub && sub.photo ? `<img class="thumb" src="${sub.photo}">` : ''}
+      <p class="muted" style="margin-top:8px;">Nice work — this one's locked in!</p>
+      ${photoNote}${questionNote}`;
+        } else {
+          const photoNeeded = photoStatus !== 'approved';
+          const questionNeeded = hasQuestion && questionStatus !== 'approved';
+          const photoComment = (sub && sub.photoComment) ? `<div class="mod-note">💬 Organizer note on the photo: ${esc(sub.photoComment)}</div>` : '';
+          const questionComment = (sub && sub.questionComment) ? `<div class="mod-note">💬 Organizer note on the answer: ${esc(sub.questionComment)}</div>` : '';
+          const answerWaitingOnPhoto = hasQuestion && questionStatus === 'approved' && photoStatus !== 'approved';
+
+          body = `
+      <div id="precta-${item.id}" class="precta" style="${alreadyRevealed ? 'display:none;' : ''}">
+        📎 Attach your team photo below to unlock the story and the question for this spot.
+      </div>
+      <div id="reveal-${item.id}" class="reveal ${alreadyRevealed ? 'open' : ''}">
+        <div class="memo-box">${esc(item.memo)}</div>
+        ${hasQuestion ? `
+        <div class="mission-box">
+          <div class="mission-title">Question · ${item.questionPoints} pts</div>
+          <div class="mission-text">${esc(item.question)}</div>
+        </div>
+        ${questionNeeded ? `
+          <label style="margin-top:10px;display:block;">Your answer</label>
+          <textarea id="note-${item.id}" rows="2" placeholder="Type your answer here">${sub ? esc(sub.note || '') : ''}</textarea>
+          ${questionComment}
+        ` : (answerWaitingOnPhoto
+                ? `<p class="muted" style="margin-top:8px;">✓ Answer approved — its ${item.questionPoints} pts will count as soon as your photo is approved too.</p>${questionComment}`
+                : `<p class="muted" style="margin-top:8px;">✓ Answer already approved — no need to retype it.</p>${questionComment}`)}
+        ` : ''}
+        ${photoNeeded ? photoComment : `<p class="muted" style="margin-top:8px;">✓ Photo already approved — only the answer needs fixing.</p>${photoComment}`}
+        <button class="btn btn-primary btn-block" style="margin-top:10px;" data-action="submit-item" data-item="${item.id}" ${isSubmitting ? 'disabled' : ''}>
+          ${isSubmitting ? 'Sending…' : (sub ? 'Resubmit for review' : 'Submit for review')}
+        </button>
+      </div>
+      ${photoNeeded ? `
+      <div class="file-input-wrap" style="margin-top:10px;">
+        <label>Team photo · ${item.photoPoints} pts</label><br>
+        <input type="file" accept="image/*" capture="environment" id="file-${item.id}" data-item="${item.id}">
+        <div class="photo-hint">${esc(item.photoTask)}</div>
+      </div>` : ''}
+    `;
+        }
+
+        return `
+  <div class="card stop-card">
+    ${stamp}
+    <div class="stop-top">
+      <div class="stop-num">${index}</div>
+      <div class="stop-meta">
+        <h3>${esc(item.name)}</h3>
+        <div class="teaser">${esc(item.place)}</div>
+      </div>
+      <div class="stop-points">+${item.points} pts</div>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
+      <span class="status-pill ${photoStatus}">Photo: ${label[photoStatus]}</span>
+      ${hasQuestion ? `<span class="status-pill ${questionStatus}">Answer: ${label[questionStatus]}</span>` : ''}
+    </div>
+    ${body}
+  </div>`;
+      }
+
+      function renderRepeatableCard(item) {
+        const mine = state.submissions.filter(s => s.teamId === state.currentTeamId && s.itemId === item.id);
+        const active = mine.filter(s => s.status !== 'refused');
+        const approvedCount = mine.filter(s => s.status === 'approved').length;
+        const isSubmitting = !!state.submitting[item.id];
+        const canAddMore = active.length < (item.maxCount || 99);
+
+        const rows = mine.slice().sort((a, b) => b.timestamp - a.timestamp).map(s => `
+    <div class="rank-row">
+      <span class="muted">${esc(s.note || '—')}</span>
+      <span class="status-pill ${s.status}" style="margin-left:auto;margin-top:0;">${s.status === 'approved' ? 'Approved' : s.status === 'pending' ? 'Pending' : 'Try again'}</span>
+    </div>`).join('');
+
+        const form = canAddMore ? `
+      <div class="memo-box" style="border-top:none;padding-top:0;">${esc(item.memo)}</div>
+      <label style="margin-top:8px;display:block;">Which plaque did you find?</label>
+      <select id="select-${item.id}">
+        ${(item.options || []).map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}
+      </select>
+      <div class="file-input-wrap">
+        <label>Team photo</label><br>
+        <input type="file" accept="image/*" capture="environment" id="file-${item.id}" data-item="${item.id}">
+        <div class="photo-hint">${esc(item.photoTask)}</div>
+      </div>
+      <button class="btn btn-primary btn-block" data-action="submit-item" data-item="${item.id}" ${isSubmitting ? 'disabled' : ''}>
+        ${isSubmitting ? 'Sending…' : 'Submit this plaque'}
+      </button>` :
+          `<p class="muted">You've reached the max of ${item.maxCount} plaques for this bonus.</p>`;
+
+        return `
+  <div class="card stop-card">
+    <div class="stop-top">
+      <div class="stop-num">★</div>
+      <div class="stop-meta">
+        <h3>${esc(item.name)}</h3>
+        <div class="teaser">${esc(item.place)}</div>
+      </div>
+      <div class="stop-points">+${item.points} pts each</div>
+    </div>
+    <p class="muted" style="margin-top:8px;">${approvedCount} of ${item.maxCount} plaques credited.</p>
+    ${rows}
+    <div style="margin-top:10px;">${form}</div>
+  </div>`;
+      }
+
+      /* ============================= MISSION MAP ============================= */
+
+      /*
+       * The map contains LOCATIONS only.
+       * BONUS_ACTIONS are deliberately excluded.
+       *
+       * Coordinates are approximate and intended to place the markers on the
+       * correct attraction/building, not to provide turn-by-turn navigation.
+       */
+      const MISSION_MAP_POINTS = [
+        { id: 'pantheon', lat: 48.8462, lng: 2.3461 },
+        { id: 'rue-mouffetard', lat: 48.844287602639895, lng: 2.349292952907453 },
+        { id: 'arenes-lutece', lat: 48.84511487855956, lng: 2.3528893059011344 },
+        { id: 'jardin-des-plantes', lat: 48.8430, lng: 2.3599 },
+        { id: 'place-estrapade', lat: 48.84522855047038, lng: 2.344861480434742 },
+        { id: 'jardin-luxembourg', lat: 48.8467, lng: 2.3371 },
+        { id: 'senat', lat: 48.8492, lng: 2.3372 },
+        { id: 'sorbonne-universite', lat: 48.8464, lng: 2.3548 },
+
+        { id: 'notre-dame', lat: 48.8530, lng: 2.3499 },
+        { id: 'pont-neuf', lat: 48.857836066035986, lng: 2.3419074959991812 },
+        { id: 'shakespeare-co', lat: 48.8528, lng: 2.3470 },
+        { id: 'sainte-chapelle', lat: 48.8554, lng: 2.3450 },
+        { id: 'place-saint-michel', lat: 48.85340650906123, lng: 2.3439017379222697 },
+        { id: 'hotel-de-ville', lat: 48.8566, lng: 2.3522 },
+
+        { id: 'pont-des-arts', lat: 48.858535801627, lng: 2.3376172151804147 },
+        { id: 'samaritaine', lat: 48.8589, lng: 2.3427 },
+        { id: 'monnaie-de-paris', lat: 48.856776139277166, lng: 2.339196748550352 },
+        { id: 'saint-germain', lat: 48.8539, lng: 2.3338 },
+        { id: 'assemblee-nationale', lat: 48.862431649201675, lng: 2.318964457498287 },
+        { id: 'musee-orsay', lat: 48.860558628028265, lng: 2.325202943023087 },
+        { id: 'saint-germain', lat: 48.8539, lng: 2.3338 },
+
+        { id: 'louvre-pyramid', lat: 48.86104408950226, lng: 2.335695618044757 },
+        { id: 'buren-columns', lat: 48.86347547948367, lng: 2.3370247286627674 },
+        { id: 'place-vendome', lat: 48.8675, lng: 2.3294 },
+        { id: 'rue-de-rivoli', lat: 48.86343794754758, lng: 2.331716366266461 }
+      ];
+
+      let missionMap = null;
+      let maplibreLoadingPromise = null;
+
+      function loadMapLibre() {
+        if (window.maplibregl) return Promise.resolve();
+
+        if (maplibreLoadingPromise) return maplibreLoadingPromise;
+
+        maplibreLoadingPromise = new Promise((resolve, reject) => {
+          if (!document.getElementById('maplibre-css')) {
+            const css = document.createElement('link');
+            css.id = 'maplibre-css';
+            css.rel = 'stylesheet';
+            css.href = 'https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css';
+            document.head.appendChild(css);
+          }
+
+          const script = document.createElement('script');
+
+          /*
+           * v5 is used here because it still provides a classic browser build.
+           * Current MapLibre v6 is ESM-only.
+           */
+          script.src = 'https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js';
+
+          script.onload = () => {
+            if (window.maplibregl) {
+              resolve();
+            } else {
+              reject(new Error('MapLibre loaded but maplibregl is unavailable.'));
+            }
+          };
+
+          script.onerror = () => {
+            reject(new Error('Could not load MapLibre GL JS.'));
+          };
+
+          document.head.appendChild(script);
+        });
+
+        return maplibreLoadingPromise;
+      }
+
+      function makeMissionMarker(number) {
+        const el = document.createElement('div');
+
+        el.className = 'map-marker';
+        el.textContent = number;
+
+        return el;
+      }
+
+      function initMissionMap() {
+        const mapElement = document.getElementById('mission-map');
+
+        if (!mapElement) return;
+
+        loadMapLibre().then(() => {
+
+          /*
+           * The Missions DOM can be rebuilt every time the page renders.
+           * Make sure we remove the previous MapLibre instance first.
+           */
+          if (missionMap) {
+            try {
+              missionMap.remove();
+            } catch (e) { }
+            missionMap = null;
+          }
+
+          missionMap = new maplibregl.Map({
+            container: mapElement,
+
+            style: 'https://tiles.openfreemap.org/styles/liberty',
+
+            center: [2.3522, 48.8566],
+            zoom: 12,
+
+            attributionControl: true
+          });
+
+          const bounds = new maplibregl.LngLatBounds();
+
+          missionMap.on('load', () => {
+
+            MISSION_MAP_POINTS.forEach((point) => {
+
+              const item = getItem(point.id);
+
+              if (!item) return;
+
+              const index =
+                LOCATIONS.findIndex(x => x.id === point.id) + 1;
+
+              /* ---------- Numbered marker ---------- */
+
+              const marker = new maplibregl.Marker({
+                element: makeMissionMarker(index)
+              })
+                .setLngLat([point.lng, point.lat])
+                .addTo(missionMap);
+
+              /* ---------- Popup ---------- */
+
+              const popup = new maplibregl.Popup({
+                offset: 18,
+                closeButton: true,
+                closeOnClick: true,
+                maxWidth: '250px'
+              }).setHTML(`
+          <div class="map-popup-title">
+            ${esc(item.name)}
+          </div>
+
+          <div>
+            ${esc(item.place)}
+          </div>
+
+          <div class="map-popup-points">
+            +${item.points} pts
+          </div>
+        `);
+
+              marker.setPopup(popup);
+
+              /* ---------- Bounds ---------- */
+
+              bounds.extend([point.lng, point.lat]);
+            });
+
+            if (!bounds.isEmpty()) {
+              missionMap.fitBounds(bounds, {
+                padding: {
+                  top: 40,
+                  bottom: 40,
+                  left: 40,
+                  right: 40
+                },
+                maxZoom: 14,
+                duration: 0
+              });
+            }
+          });
+
+        }).catch(err => {
+
+          console.error('Mission map error:', err);
+
+          const el = document.getElementById('mission-map');
+
+          if (el) {
+            el.innerHTML = `
+        <div style="
+          padding:20px;
+          text-align:center;
+          color:var(--ink-soft);
+        ">
+          Map could not be loaded.
+          Please check your internet connection.
+        </div>`;
+          }
+        });
+      }
+
+
+      function renderMissions() {
+        if (!state.currentTeamId) {
+          return `
+      <div class="card empty-state">
+        Create or join your team on the <b>Home</b> tab to unlock the missions.
+      </div>`;
+        }
+
+        let html = '';
+        let n = 1;
+
+        /* ---------- Interactive map ---------- */
+        html += `
+    <div class="mission-map-wrap">
+      <h2>🗺️ Choose your route</h2>
+
+      <div class="mission-map-note">
+        There are 24 locations to explore. You do <b>not</b> need to visit them all.
+        Choose your own route and finish at Sorbonne Université, Jussieu.
+      </div>
+
+      <div id="mission-map"></div>
+      <div class="map-attribution">
+        Map data © OpenStreetMap contributors · Map style © OpenFreeMap
+      </div>
+
+      <div class="mission-map-legend">
+        <span class="map-legend-item">
+          Click a marker to see the location
+        </span>
+        <span class="map-legend-item">
+          📍 24 optional locations
+        </span>
+        <span class="map-legend-item">
+          🎯 Choose your strategy
+        </span>
+      </div>
+    </div>
+  `;
+
+        /* ---------- Mission cards ---------- */
+        CLUSTER_ORDER.forEach(clusterName => {
+          const items = LOCATIONS.filter(l => l.cluster === clusterName);
+
+          if (!items.length) return;
+
+          html += `
+      <div class="cluster-heading">
+        ${esc(clusterName)}
+      </div>`;
+
+          items.forEach(item => {
+            html += renderItemCard(item, n);
+            n++;
+          });
+        });
+
+        /*
+         * IMPORTANT:
+         * BONUS_ACTIONS are intentionally NOT shown here.
+         *
+         * The map and the Missions tab therefore contain only LOCATIONS.
+         */
+
+        return html;
+      }
+
+      function renderAdditionalMissions() {
+        if (!state.currentTeamId) {
+          return `
+      <div class="card empty-state">
+        Create or join your team on the <b>Home</b> tab to unlock the missions.
+      </div>`;
+        }
+
+        let html = '';
+        let n = 1;
+
+        /* ---------- Interactive map ---------- */
+        html += `
+    <div class="mission-map-wrap">
+      <h2>🗺️ Choose your route</h2>
+
+      <div class="mission-map-note">
+        There are 5 additional missions to fulfil. You can complete one of these at any time during your treasure hunt !
+      </div>`
+
+
+        /* ---------- Mission cards ---------- */
+
+        html += `
+      <div class="cluster-heading">
+        Bonus Missions
+      </div>`;
+
+        BONUS_ACTIONS.forEach(item => {
+          html += renderItemCard(item, n);
+          n++;
+        });
+
+        /*
+         * IMPORTANT:
+         * BONUS_ACTIONS are intentionally NOT shown here.
+         *
+         * The map and the Missions tab therefore contain only LOCATIONS.
+         */
+
+        return html;
+      }
+
+      function renderLeaderboard() {
+        const rows = state.teams.map(t => {
+          const sc = scoreForTeam(t.id);
+          const late = latenessForTeam(t);
+          const net = Math.max(0, sc.points - late.penalty);
+          return { team: t, gross: sc.points, count: sc.count, ...late, net };
+        }).sort((a, b) => b.net - a.net || b.gross - a.gross || a.team.createdAt - b.team.createdAt);
+
+        const list = rows.length ? rows.map((r, i) => {
+          let arrivalLine;
+          if (!r.team.arrivedAt) {
+            arrivalLine = `<span class="elapsed">Still out on the hunt</span>`;
+          } else if (r.lateMin > 0) {
+            arrivalLine = `<span class="elapsed late-tag">Arrived ${fmtClock(r.team.arrivedAt)} · ${r.lateMin} min late · -${r.penalty} pts</span>`;
+          } else {
+            arrivalLine = `<span class="elapsed">Arrived ${fmtClock(r.team.arrivedAt)} · on time</span>`;
+          }
+          return `
+    <div class="rank-row ${i === 0 ? 'first' : ''}">
+      <div class="rank-num">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1)}</div>
+      <div>
+        <span class="plaque-badge">${esc(r.team.name)}</span>
+        ${arrivalLine}
+      </div>
+      <div class="rank-score">
+        <div class="pts">${r.net} pts</div>
+        <div class="stops">${r.count} mission${r.count === 1 ? '' : 's'} approved</div>
+      </div>
+    </div>`;
+        }).join('') : `<div class="empty-state">No teams yet.</div>`;
+
+        return `
+    <div class="card">
+      <h2><span class="live-dot"></span>Live leaderboard</h2>
+      <div style="margin-top:10px;">${list}</div>
+      <p class="muted" style="margin-top:10px;">Updates instantly for everyone. Scores for teams still out on the hunt are provisional — the late penalty only applies once an organizer logs your arrival.</p>
+    </div>`;
+      }
+
+      function renderAdmin() {
+        if (!state.modoUnlocked) {
+          return `
+    ${renderStorageBanner()}
+    <div class="card">
+      <h2>Organizer area</h2>
+      <p class="muted">For the organizing team only: start the hunt, log arrivals, and review submitted proof.</p>
+      <label>Admin PIN</label>
+      <div class="pin-row">
+        <input type="text" id="modo-pin-input" placeholder="PIN">
+        <button class="btn btn-primary" data-action="modo-unlock">Unlock</button>
+      </div>
+    </div>`;
+        }
+
+        const huntControl = state.game.startedAt ? `
+    <div class="card">
+      <h2>Hunt control</h2>
+      <p class="muted">Started at ${fmtClock(state.game.startedAt)}. Deadline: ${fmtClock(state.game.startedAt + HUNT_DURATION_MS)}.</p>
+    </div>` : `
+    <div class="card">
+      <h2>Hunt control</h2>
+      <p class="muted">The 2-hour clock hasn't started yet.</p>
+      <button class="btn btn-primary btn-block" data-action="start-hunt">▶ Start the 2-hour clock</button>
+    </div>`;
+
+        const teamsHtml = state.teams.length ? state.teams.map(t => {
+          const late = latenessForTeam(t);
+          return `
+    <div class="arrival-row">
+      <span class="plaque-badge">${esc(t.name)}</span>
+      ${t.arrivedAt
+              ? `<span class="muted">Arrived ${fmtClock(t.arrivedAt)}${late.lateMin > 0 ? ` · ${late.lateMin} min late (-${late.penalty} pts)` : ' · on time'}</span>
+           <button class="btn btn-secondary" style="margin-left:auto;" data-action="unmark-arrived" data-id="${t.id}">Undo</button>`
+              : `<button class="btn btn-primary" style="margin-left:auto;" data-action="mark-arrived" data-id="${t.id}">Mark arrived now</button>`}
+    </div>`;
+        }).join('') : `<p class="muted">No teams registered yet.</p>`;
+
+        const pendingNormal = state.submissions.filter(s => {
+          const item = getItem(s.itemId);
+          if (!item || item.repeatable) return false;
+          return s.photoStatus === 'pending' || (item.questionPoints > 0 && s.questionStatus === 'pending');
+        }).sort((a, b) => a.timestamp - b.timestamp);
+
+        const pendingPlaques = state.submissions.filter(s => {
+          const item = getItem(s.itemId);
+          return item && item.repeatable && s.status === 'pending';
+        }).sort((a, b) => a.timestamp - b.timestamp);
+
+        const doneNormal = state.submissions.filter(s => {
+          const item = getItem(s.itemId);
+          if (!item || item.repeatable) return false;
+          return s.photoStatus !== 'pending' && (item.questionPoints === 0 || s.questionStatus !== 'pending');
+        }).sort((a, b) => b.timestamp - a.timestamp);
+
+        const donePlaques = state.submissions.filter(s => {
+          const item = getItem(s.itemId);
+          return item && item.repeatable && s.status !== 'pending';
+        }).sort((a, b) => b.timestamp - a.timestamp);
+
+        const pendingNormalHtml = pendingNormal.map(s => {
+          const item = getItem(s.itemId);
+          const photoBlock = s.photoStatus === 'pending' ? `
+      <div class="mod-note">📸 Photo — pending</div>
+      <input type="text" class="comment-input" id="photo-comment-${s.id}" placeholder="Comment on the photo (optional)">
+      <div class="btn-row" style="margin-top:6px;">
+        <button class="btn btn-primary" data-action="approve-photo" data-id="${s.id}">✓ Approve photo (+${item.photoPoints})</button>
+        <button class="btn btn-danger" data-action="reject-photo" data-id="${s.id}">✗ Reject photo</button>
+      </div>` : `<div class="mod-note">📸 Photo — ${s.photoStatus === 'approved' ? 'already approved ✓' : 'rejected ✗'}</div>`;
+
+          const questionBlock = item.questionPoints <= 0 ? '' : (
+            s.questionStatus === 'pending' ? `
+      <div class="mod-note">❓ ${esc(item.question)}</div>
+      <div class="mod-note">📝 Team answer: ${esc(s.note || '—')}</div>
+      ${item.answerKey ? `<div class="answer-key">🔑 Reference: ${esc(item.answerKey)}</div>` : ''}
+      <input type="text" class="comment-input" id="question-comment-${s.id}" placeholder="Comment on the answer (optional)">
+      <div class="btn-row" style="margin-top:6px;">
+        <button class="btn btn-primary" data-action="approve-question" data-id="${s.id}">✓ Approve answer (+${item.questionPoints})</button>
+        <button class="btn btn-danger" data-action="reject-question" data-id="${s.id}">✗ Reject answer</button>
+      </div>` : `<div class="mod-note">❓ Answer — ${s.questionStatus === 'approved' ? 'already approved ✓' : 'rejected ✗'}</div>`
+          );
+
+          return `
+    <div class="card mod-card">
+      <div class="mod-header">
+        <span class="plaque-badge">${esc(s.teamName)}</span>
+        <span class="muted">${esc(item ? item.name : s.itemId)}</span>
+      </div>
+      <img class="thumb" src="${s.photo}">
+      ${photoBlock}
+      ${questionBlock}
+    </div>`;
+        }).join('');
+
+        const pendingPlaquesHtml = pendingPlaques.map(s => {
+          const item = getItem(s.itemId);
+          return `
+    <div class="card mod-card">
+      <div class="mod-header">
+        <span class="plaque-badge">${esc(s.teamName)}</span>
+        <span class="muted">${esc(item ? item.name : s.itemId)}</span>
+      </div>
+      <img class="thumb" src="${s.photo}">
+      <div class="mod-note">📝 ${esc(s.note || '—')}</div>
+      <input type="text" class="comment-input" id="comment-${s.id}" placeholder="Comment (optional, visible to the team)">
+      <div class="btn-row" style="margin-top:8px;">
+        <button class="btn btn-primary" data-action="approve-plaque" data-id="${s.id}">✓ Approve (+${item.points})</button>
+        <button class="btn btn-danger" data-action="reject-plaque" data-id="${s.id}">✗ Reject</button>
+      </div>
+    </div>`;
+        }).join('');
+
+        const pendingHtml = (pendingNormalHtml + pendingPlaquesHtml) ? (pendingNormalHtml + pendingPlaquesHtml) : `<div class="empty-state">Nothing waiting for review 🎉</div>`;
+
+        const doneNormalHtml = doneNormal.map(s => {
+          const item = getItem(s.itemId);
+          return `
+    <div class="card mod-card">
+      <div class="mod-header">
+        <span class="plaque-badge">${esc(s.teamName)}</span>
+        <span class="muted">${esc(item ? item.name : s.itemId)}</span>
+      </div>
+      <div class="rank-row" style="padding-top:0;">
+        <span class="status-pill ${s.photoStatus}">Photo ${s.photoStatus === 'approved' ? '✓ Approved' : '✗ Rejected'}</span>
+        ${item.questionPoints > 0 ? `<span class="status-pill ${s.questionStatus}">Answer ${s.questionStatus === 'approved' ? '✓ Approved' : '✗ Rejected'}</span>` : ''}
+      </div>
+      <label style="margin-top:6px;display:block;">Comment on the photo</label>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="photoComment-note-input-${s.id}" value="${esc(s.photoComment || '')}" placeholder="Message for the team about their photo">
+        <button class="btn btn-secondary" data-action="send-comment" data-id="${s.id}" data-field="photoComment">Send</button>
+      </div>
+      ${item.questionPoints > 0 ? `
+      <label style="margin-top:6px;display:block;">Comment on the answer</label>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="questionComment-note-input-${s.id}" value="${esc(s.questionComment || '')}" placeholder="Message for the team about their answer">
+        <button class="btn btn-secondary" data-action="send-comment" data-id="${s.id}" data-field="questionComment">Send</button>
+      </div>`: ''}
+    </div>`;
+        }).join('');
+
+        const donePlaquesHtml = donePlaques.map(s => {
+          const item = getItem(s.itemId);
+          return `
+    <div class="rank-row">
+      <div>
+        <span class="plaque-badge">${esc(s.teamName)}</span>
+        <span class="muted"> · ${esc(item ? item.name : s.itemId)}</span>
+      </div>
+      <div class="rank-score">
+        <span class="status-pill ${s.status}">${s.status === 'approved' ? 'Approved' : 'Rejected'}</span>
+      </div>
+    </div>`;
+        }).join('');
+
+        const doneCount = doneNormal.length + donePlaques.length;
+        const doneHtml = doneNormalHtml + donePlaquesHtml;
+
+        return `
+    ${renderStorageBanner()}
+    ${huntControl}
+    <div class="card">
+      <h2>Teams &amp; arrivals</h2>
+      ${teamsHtml}
+    </div>
+    <div class="card">
+      <h2><span class="live-dot"></span>Review queue</h2>
+      <p class="muted">Photo and answer are approved or rejected separately — points are only credited for the parts you approve.</p>
+    </div>
+    ${pendingHtml}
+    <div class="card">
+      <h3>History (${doneCount})</h3>
+      ${doneHtml || '<p class="muted">Nothing yet.</p>'}
+    </div>
+    <div class="card" style="border-color:var(--alerte);">
+      <h3 style="color:var(--alerte);">Danger zone</h3>
+      <p class="muted">Deletes every team and submission for everyone — use this before a fresh run of the hunt.</p>
+      <button class="btn btn-danger" data-action="reset-game">Reset everything</button>
+    </div>`;
+      }
+
+      function render() {
+        const body =
+          state.tab === 'home' ? renderHome() :
+            state.tab === 'missions' ? renderMissions() :
+              state.tab === 'add-missions' ? renderAdditionalMissions() :
+                state.tab === 'leaderboard' ? renderLeaderboard() :
+                  renderAdmin();
+
+        document.getElementById('app').innerHTML = renderHeader() + body +
+          `<div class="footer-note">Made for hEART 2026 with love</div>`;
+
+        if (state.tab === 'missions') {
+          initMissionMap();
+        }
+      }
+
+      /* ============================= EVENTS ============================= */
+      document.addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+
+        if (action === 'switch-tab') { setTab(btn.dataset.tab); return; }
+        if (action === 'random-name') { pickRandomName(); return; }
+        if (action === 'create-team') { createTeam(); return; }
+        if (action === 'select-team') { selectTeam(btn.dataset.id); return; }
+        if (action === 'submit-item') { submitItem(btn.dataset.item); return; }
+        if (action === 'modo-unlock') { tryUnlockModo(); return; }
+        if (action === 'approve-photo') { moderatePhoto(btn.dataset.id, 'approved'); return; }
+        if (action === 'reject-photo') { moderatePhoto(btn.dataset.id, 'refused'); return; }
+        if (action === 'approve-question') { moderateQuestion(btn.dataset.id, 'approved'); return; }
+        if (action === 'reject-question') { moderateQuestion(btn.dataset.id, 'refused'); return; }
+        if (action === 'approve-plaque') { moderateRepeatable(btn.dataset.id, 'approved'); return; }
+        if (action === 'reject-plaque') { moderateRepeatable(btn.dataset.id, 'refused'); return; }
+        if (action === 'start-hunt') { startHunt(); return; }
+        if (action === 'mark-arrived') { markArrived(btn.dataset.id, true); return; }
+        if (action === 'unmark-arrived') { markArrived(btn.dataset.id, false); return; }
+        if (action === 'reset-game') { resetGame(); return; }
+      });
+
+      document.addEventListener('change', function (e) {
+        if (e.target && e.target.matches('input[type=file][data-item]')) {
+          if (e.target.files && e.target.files[0]) revealItem(e.target.dataset.item);
+        }
+      });
+
+      /* live chrono tick in header without full re-render */
+      setInterval(() => {
+        const wrap = document.getElementById('chrono-wrap');
+        if (!wrap || !state.game.startedAt) return;
+        const remaining = state.game.startedAt + HUNT_DURATION_MS - Date.now();
+        const low = remaining < 15 * 60 * 1000;
+        wrap.className = (remaining <= 0 || low) ? 'low' : '';
+        wrap.textContent = '⏱ ' + (remaining <= 0 ? "Time's up — head to Jussieu!" : fmtElapsed(remaining) + ' left');
+      }, 1000);
+
+      /* ============================= INIT ============================= */
+      async function init() {
+        await checkStorage();
+        render();
+        if (state.storageOk) {
+          attachLiveListeners();
+        }
+      }
+      init();
+
+    })();
+  </script>
+</body>
+
+</html>
