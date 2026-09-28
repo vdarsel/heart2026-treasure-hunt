@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <link rel="icon" href="https://heart2026.fr/wp-content/uploads/2026/08/icone_site_bleu-300x300.png" sizes="192x192" />
@@ -841,6 +840,29 @@
         db = firebase.database();
       }
 
+/* ============================= HUNT CONFIG =============================
+   Everything that is specific to *this* hunt (city, wording, map, admin
+   check) lives here, so you can reuse the file for another event by
+   editing this block + the LOCATIONS / BONUS_ACTIONS / MISSION_MAP_POINTS
+   data below. See README.md for the full checklist. */
+const HUNT_CONFIG = {
+  pageTitle:      'Paris Scavenger Hunt — Notre-Dame to Jussieu', // browser tab title
+  eyebrow:        'Left Bank · 5th & 6th arrondissements',        // small line above the title
+  title:          'Paris Scavenger Hunt',                         // big title in the header
+  subtitle:       'Start anywhere · Finish at Sorbonne Université, Jussieu',
+  finishShort:    'Jussieu',                                      // used in "head to …!" and late-penalty text
+  finishLong:     'Sorbonne Université, Jussieu',                 // used on the Missions map note
+  mapCenter:      [2.3522, 48.8566],                              // [longitude, latitude]
+  mapZoom:        12,
+
+  // How the admin PIN is checked:
+  //   'php'   -> the PIN lives ONLY in index.php on your server (needs PHP hosting)
+  //   'local' -> the PIN is written below, in this file (works on any static host,
+  //              but anyone who views the page source can read it)
+  adminMode:      'php',
+  adminEndpoint:  'index.php',                                    // file that checks the PIN in 'php' mode (rename it if 'index.php' clashes with your home page)
+  localAdminPin:  '2026'                                          // only used when adminMode is 'local'
+};
 
       /* ============================= DATA ============================= */
       /* Point scale: adjust to your needs */
@@ -1350,12 +1372,25 @@ For a group of scientists, one connection stands out: in 1851, physicist Léon F
       async function tryUnlockModo() {
         const input = document.getElementById('modo-pin-input');
         const val = input ? input.value.trim() : '';
-        if (!val) { alert('Type the PIN first.'); return; }
-        try {
-          const res = await fetch('login.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'pin=' + encodeURIComponent(val)
+  if(!val){ alert('Type the PIN first.'); return; }
+
+  // Mode "local": the PIN is in HUNT_CONFIG (simple, but visible in the page source).
+  if(HUNT_CONFIG.adminMode === 'local'){
+    if(val === HUNT_CONFIG.localAdminPin){
+      state.modoUnlocked = true;
+      render();
+    } else {
+      alert('Incorrect code.');
+    }
+    return;
+  }
+
+  // Mode "php": the PIN is checked on the server by login.php and never sent to the browser.
+  try{
+    const res = await fetch(HUNT_CONFIG.adminEndpoint, {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'pin='+encodeURIComponent(val)
           });
           const data = await res.json();
           if (data && data.success) {
